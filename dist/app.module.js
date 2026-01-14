@@ -10,6 +10,8 @@ exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
 const user_module_1 = require("./user/user.module");
 const auth_module_1 = require("./auth/auth.module");
+const table_module_1 = require("./table/table.module");
+const platform_express_1 = require("@nestjs/platform-express");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -18,6 +20,10 @@ exports.AppModule = AppModule = __decorate([
         imports: [
             user_module_1.UserModule,
             auth_module_1.AuthModule,
+            table_module_1.TableModule,
+            platform_express_1.MulterModule.register({
+                dest: './uploads',
+            }),
         ],
     })
 ], AppModule);

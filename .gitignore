@@ -9,6 +9,11 @@ dist_electron
 .env.local
 .env.*.local
 
+# Database files
+data/
+*.sqlite
+*.sqlite3
+
 # Log files
 npm-debug.log*
 yarn-debug.log*
@@ -26,3 +31,7 @@ pnpm-debug.log*
 *.sw?
 /components.d.ts
 /components.d.ts
+
+# Uploads
+uploads/
+

@@ -1,55 +1,47 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import * as CryptoJS from 'crypto-js';
-
-// 用户接口
-interface User {
-  id: number;
-  username: string;
-  password: string;
-  email: string;
-  role: string;
-  avatar: string;
-}
+import { User } from './user.entity';
 
 @Injectable()
 export class UserService {
-  // 内存存储用户数据
-  private users: User[] = [];
+  constructor(
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
+  ) {}
 
   async findOne(username: string): Promise<User | undefined> {
-    return this.users.find(user => user.username === username);
+    return await this.userRepository.findOne({
+      where: { username },
+      relations: ['roles'],
+    });
   }
 
   async findOneById(id: number): Promise<User | undefined> {
-    return this.users.find(user => user.id === id);
+    return await this.userRepository.findOne({
+      where: { id },
+      relations: ['roles', 'roles.menus'],
+    });
   }
 
   async create(userData: Partial<User>): Promise<User> {
-    // 哈希密码
     const hashedPassword = this.hashPassword(userData.password);
-    const user: User = {
-      id: this.users.length + 1,
-      username: userData.username,
+    const user = this.userRepository.create({
+      ...userData,
       password: hashedPassword,
-      email: userData.email,
-      role: userData.role || 'user',
-      avatar: userData.avatar || '',
-    };
-    this.users.push(user);
-    return user;
+    });
+    return await this.userRepository.save(user);
   }
 
-  // 哈希密码方法
   hashPassword(password: string): string {
     return CryptoJS.SHA256(password).toString();
   }
 
-  // 验证密码方法
   public verifyPassword(plainPassword: string, hashedPassword: string): boolean {
     return this.hashPassword(plainPassword) === hashedPassword;
   }
 
-  // 初始化默认用户
   async initializeDefaultUser(): Promise<void> {
     const existingUser = await this.findOne('admin');
     if (!existingUser) {
@@ -62,5 +54,42 @@ export class UserService {
       });
       console.log('Default admin user created: username=admin, password=admin123');
     }
+  }
+
+  async findAll(query: any) {
+    const { page = 1, pageSize = 10, username } = query;
+    const skip = (page - 1) * pageSize;
+
+    const queryBuilder = this.userRepository.createQueryBuilder('user');
+
+    if (username) {
+      queryBuilder.andWhere('user.username LIKE :username', { username: `%${username}%` });
+    }
+
+    const [list, total] = await queryBuilder
+      .skip(skip)
+      .take(pageSize)
+      .orderBy('user.id', 'DESC')
+      .getManyAndCount();
+
+    return {
+      page: Number(page),
+      pageSize: Number(pageSize),
+      pageCount: Math.ceil(total / pageSize),
+      itemCount: total,
+      list,
+    };
+  }
+
+  async update(id: number, userData: Partial<User>) {
+    if (userData.password) {
+      userData.password = this.hashPassword(userData.password);
+    }
+    await this.userRepository.update(id, userData);
+    return await this.findOneById(id);
+  }
+
+  async delete(id: number) {
+    return await this.userRepository.delete(id);
   }
 }

@@ -1,5 +1,6 @@
-import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, HttpException, HttpStatus } from '@nestjs/common';
 import { MenuService } from './menu.service';
+import { QueryFailedError } from 'typeorm';
 
 @Controller('api/menu')
 export class MenuController {
@@ -34,22 +35,36 @@ export class MenuController {
 
   @Post()
   async create(@Body() menuData: any) {
-    const result = await this.menuService.create(menuData);
-    return {
-      code: 200,
-      result,
-      message: '创建成功',
-    };
+    try {
+      const result = await this.menuService.create(menuData);
+      return {
+        code: 200,
+        result,
+        message: '创建成功',
+      };
+    } catch (error) {
+      if (error instanceof QueryFailedError && (error as any).message.includes('UNIQUE constraint failed: menus.key')) {
+        throw new HttpException('菜单标识已存在', HttpStatus.BAD_REQUEST);
+      }
+      throw error;
+    }
   }
 
   @Put(':id')
   async update(@Param('id') id: string, @Body() menuData: any) {
-    const result = await this.menuService.update(Number(id), menuData);
-    return {
-      code: 200,
-      result,
-      message: '更新成功',
-    };
+    try {
+      const result = await this.menuService.update(Number(id), menuData);
+      return {
+        code: 200,
+        result,
+        message: '更新成功',
+      };
+    } catch (error) {
+      if (error instanceof QueryFailedError && (error as any).message.includes('UNIQUE constraint failed: menus.key')) {
+        throw new HttpException('菜单标识已存在', HttpStatus.BAD_REQUEST);
+      }
+      throw error;
+    }
   }
 
   @Delete(':id')
